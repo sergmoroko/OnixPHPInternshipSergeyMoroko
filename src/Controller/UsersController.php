@@ -130,7 +130,7 @@ class UsersController extends AppController
 
         if ($this->Authorization->can($user, 'delete')) {
 
-            if (!$this->Users->delete($user)) {
+            if (!$this->Users->deleteById($user->id)) {
                 throw new BadRequestException([], 'Can\'t delete this user.');
             }
             $response = 'User deleted.';

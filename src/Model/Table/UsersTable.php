@@ -188,6 +188,7 @@ class UsersTable extends Table
     $user = $this->getById($id);
     $user->deleted = true;
     $this->save($user);
+    return true;
     }
 
 
