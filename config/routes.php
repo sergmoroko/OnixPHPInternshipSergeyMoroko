@@ -51,40 +51,34 @@ $routes->scope('/', function (RouteBuilder $builder) {
      * to use (in this case, templates/Pages/home.php)...
      */
     $builder->setExtensions(['json']);
-    $builder->connect('/account', ['controller' => 'Users', 'action' => 'myAccount']);
-    $builder->connect('account/deposit', ['controller' => 'Users', 'action' => 'deposit', 'method' => 'POST']);
+
 
     $builder->resources('Users', [
         'map' => [
-            'register' => [
-                'action' => 'add',
-                'method' => ['POST'],
-                'path'   => '/register',
-            ],
-            'index' =>[
-                'action'=> 'index',
-                'method'=>'GET',
+            'index' => [
+                'action' => 'index',
+                'method' => 'GET',
                 'path' => '',
-            ],
-            'login' => [
-                'action' => 'login',
-                'method' => 'POST',
-                'path'   => '/login',
             ],
             'delete' => [
                 'action' => 'delete',
                 'method' => 'DELETE',
-                'path'   => '/:id/delete',
+                'path' => '/:id/delete',
             ],
             'edit' => [
                 'action' => 'edit',
                 'method' => 'PATCH',
-                'path'   => '/:id/edit',
+                'path' => '/:id/edit',
             ],
             'setRole' => [
                 'action' => 'setRole',
                 'method' => ['PUT', 'DELETE'],
-                'path'   => '/:id/role',
+                'path' => '/:id/role',
+            ],
+            'view' => [
+                'action' => 'view',
+                'method' => 'GET',
+                'path' => '/:id',
             ],
         ]
     ]);
@@ -94,22 +88,27 @@ $routes->scope('/', function (RouteBuilder $builder) {
             'add' => [
                 'action' => 'add',
                 'method' => ['POST'],
-                'path'   => '/add',
+                'path' => '/add',
             ],
-            'index' =>[
-                'action'=> 'index',
-                'method'=>'GET',
+            'index' => [
+                'action' => 'index',
+                'method' => 'GET',
                 'path' => '',
+            ],
+            'view' => [
+                'action' => 'view',
+                'method' => 'GET',
+                'path' => '/:id',
             ],
             'delete' => [
                 'action' => 'delete',
                 'method' => 'DELETE',
-                'path'   => '/:id/delete',
+                'path' => '/:id/delete',
             ],
             'edit' => [
                 'action' => 'edit',
                 'method' => 'PATCH',
-                'path'   => '/:id/edit',
+                'path' => '/:id/edit',
             ],
         ]
     ]);
@@ -119,22 +118,57 @@ $routes->scope('/', function (RouteBuilder $builder) {
             'add' => [
                 'action' => 'add',
                 'method' => ['POST'],
-                'path'   => '/add',
+                'path' => '/add',
             ],
-            'index' =>[
-                'action'=> 'index',
-                'method'=>'GET',
+            'index' => [
+                'action' => 'index',
+                'method' => 'GET',
                 'path' => '',
             ],
             'delete' => [
                 'action' => 'delete',
                 'method' => 'DELETE',
-                'path'   => '/:id/delete',
+                'path' => '/:id/delete',
             ],
             'edit' => [
                 'action' => 'edit',
                 'method' => 'PATCH',
-                'path'   => '/:id/edit',
+                'path' => '/:id/edit',
+            ],
+            'buy' => [
+                'action' => 'buy',
+                'method' => 'GET',
+                'path' => '/:id/buy',
+            ],
+        ]
+    ]);
+
+    $builder->resources('Orders', [
+        'map' => [
+            'index' => [
+                'action' => 'index',
+                'method' => 'GET',
+                'path' => '',
+            ],
+            'view' => [
+                'action' => 'view',
+                'method' => 'GET',
+                'path' => '/:id',
+            ],
+        ]
+    ]);
+
+    $builder->resources('Transactions', [
+        'map' => [
+            'index' => [
+                'action' => 'index',
+                'method' => 'GET',
+                'path' => '',
+            ],
+            'view' => [
+                'action' => 'view',
+                'method' => 'GET',
+                'path' => '/:id',
             ],
         ]
     ]);
@@ -143,16 +177,23 @@ $routes->scope('/', function (RouteBuilder $builder) {
         ['controller' => 'Users', 'action' => 'view'],
         ['id' => '\d+', 'pass' => ['id']]);
 
-    $builder->connect('/categories/:id',
-        ['controller' => 'Categories', 'action' => 'view'],
-        ['id' => '\d+', 'pass' => ['id']]);
 
-//    $builder->connect('/users/:id/transactions/:startDate/:endDate', ['controller' => 'Users', 'action' => 'getTransactionHistory'])
-    $builder->connect('/users/:id/transactions', ['controller' => 'Users', 'action' => 'getTransactionHistory'])
-        ->setPatterns(['id' => '\d+'])
-        ->setPass(['id']);
+    $builder->connect('/registration', ['controller' => 'Users', 'method' => 'POST', 'action' => 'add']);
 
+    $builder->connect('/login', ['controller' => 'Users', 'method' => 'POST', 'action' => 'login']);
 
+    $builder->connect('/account', ['controller' => 'Users', 'method' => 'GET', 'action' => 'myAccount']);
+
+    $builder->connect('account/deposit', ['controller' => 'Users', 'action' => 'deposit', 'method' => 'POST']);
+
+    $builder->connect('/account/transactions',
+        ['controller' => 'Transactions', 'method' => 'GET', 'action' => 'myTransactions']);
+
+    $builder->connect('/account/orders',
+        ['controller' => 'Orders', 'method' => 'GET', 'action' => 'myOrders']);
+
+    $builder->connect('/account/listings',
+        ['controller' => 'Listings', 'method' => 'GET', 'action' => 'myListings']);
 
 });
 

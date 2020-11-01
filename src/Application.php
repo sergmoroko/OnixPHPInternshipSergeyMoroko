@@ -18,9 +18,13 @@ declare(strict_types=1);
 namespace App;
 
 use App\Model\Entity\Category;
+use App\Model\Entity\Order;
 use App\Model\Entity\User;
+use App\Model\Table\OrdersTable;
 use App\Policy\CategoriesPolicy;
 use App\Policy\CategoryPolicy;
+use App\Policy\OrderPolicy;
+use App\Policy\OrdersTablePolicy;
 use App\Policy\RequestPolicy;
 use App\Policy\UserPolicy;
 use ArrayAccess;
@@ -61,6 +65,8 @@ class Application extends BaseApplication
      */
     public function bootstrap(): void
     {
+        $this->addPlugin('Search');
+
         // Call parent to load bootstrap from files.
         parent::bootstrap();
 
@@ -189,6 +195,8 @@ class Application extends BaseApplication
         $mapResolver = new MapResolver();
         $mapResolver->map(User::class, UserPolicy::class);
         $mapResolver->map(Category::class, CategoryPolicy::class);
+        $mapResolver->map(OrdersTable::class, OrdersTablePolicy::class);
+        $mapResolver->map(Order::class, OrderPolicy::class);
 
 
         $ormResolver = new OrmResolver();

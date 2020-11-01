@@ -3,7 +3,12 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
-use Cake\ORM\Query;
+use App\Model\Entity\Order;
+use App\Model\Entity\Transaction;
+use App\Utilities\Service;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\ServerRequest;
+use Cake\I18n\FrozenTime;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
@@ -28,6 +33,7 @@ use Cake\Validation\Validator;
  * @method \App\Model\Entity\Transaction[]|\Cake\Datasource\ResultSetInterface saveManyOrFail(iterable $entities, $options = [])
  * @method \App\Model\Entity\Transaction[]|\Cake\Datasource\ResultSetInterface|false deleteMany(iterable $entities, $options = [])
  * @method \App\Model\Entity\Transaction[]|\Cake\Datasource\ResultSetInterface deleteManyOrFail(iterable $entities, $options = [])
+ * @method searchManager()
  *
  * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
@@ -59,6 +65,17 @@ class TransactionsTable extends Table
         $this->hasMany('Comissions', [
             'foreignKey' => 'transaction_id',
         ]);
+
+        // Search config
+        $this->addBehavior('Search.Search');
+
+        // Setup search filter using search manager
+        $this->searchManager()
+            ->add('foo', 'Search.Callback', [
+                    'callback' => function (\Cake\ORM\Query $query, array $args, \Search\Model\Filter\Base $filter) {
+                    }
+                ]
+            );
     }
 
     /**
@@ -78,16 +95,6 @@ class TransactionsTable extends Table
             ->allowEmptyString('fee');
 
         $validator
-            ->scalar('balance_before')
-            ->requirePresence('balance_before', 'create')
-            ->notEmptyString('balance_before');
-
-        $validator
-            ->scalar('balance_after')
-            ->requirePresence('balance_after', 'create')
-            ->notEmptyString('balance_after');
-
-        $validator
             ->scalar('amount')
             ->requirePresence('amount', 'create')
             ->notEmptyString('amount');
@@ -95,6 +102,7 @@ class TransactionsTable extends Table
         $validator
             ->scalar('type')
             ->requirePresence('type', 'create')
+            ->inList('role', Transaction::TRANSACTION_TYPES)
             ->notEmptyString('type');
 
         return $validator;
@@ -113,5 +121,56 @@ class TransactionsTable extends Table
         $rules->add($rules->existsIn(['order_id'], 'Orders'), ['errorField' => 'order_id']);
 
         return $rules;
+    }
+
+    public function createOrderTransactions(Order $order){
+        // fee
+        $feeAmount = Service::calculateFee($order->price);
+
+        $feeTransaction = $this->newEmptyEntity();
+        $feeTransaction->user_id = $this->Users->getOwner()->id;
+        $feeTransaction->order_id = $order->id;
+        $feeTransaction->amount = $feeAmount;
+        $feeTransaction->type = 'comission';
+
+        // buyer
+        $buyerTransaction = $this->newEmptyEntity();
+        $buyerTransaction->user_id = $order->buyer_id;
+        $buyerTransaction->order_id = $order->id;
+        $buyerTransaction->amount = -$order->price;
+        $buyerTransaction->type = 'purchase';
+
+        // seller
+        $sellerTransaction = $this->newEmptyEntity();
+        $sellerTransaction->user_id = $order->seller_id;
+        $sellerTransaction->order_id = $order->id;
+        $sellerTransaction->amount = $order->price - $feeAmount;
+        $sellerTransaction->type = 'sale';
+        $sellerTransaction->fee = $feeAmount;
+
+        $this->saveMany([$sellerTransaction, $buyerTransaction, $feeTransaction]);
+
+    }
+
+    public function getById($id){
+        if (!$this->exists(['id' => $id])){
+            throw new RecordNotFoundException('There is no transaction with such id: '. $id);
+        }
+        return $this->get($id);
+    }
+
+    public function getTransactionsByUserId($id, ServerRequest $request){
+        $query = ['user_id' => $id];
+        if (isset($request->getQueryParams()['startDate'])) {
+            $startDate = $request->getQueryParams()['startDate'];
+            $query[] = ['created >=' => FrozenTime::createFromFormat('d-m-Y', $startDate)];
+        }
+        if (isset($request->getQueryParams()['endDate'])) {
+            $endDate = $request->getQueryParams()['endDate'];
+            $query[] = ['created <=' => FrozenTime::createFromFormat('d-m-Y', $endDate)];
+        }
+
+        return $this->find('all')
+            ->where($query);
     }
 }

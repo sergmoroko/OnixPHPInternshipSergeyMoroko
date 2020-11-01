@@ -7,6 +7,7 @@ namespace App\Controller;
  * Transactions Controller
  *
  * @property \App\Model\Table\TransactionsTable $Transactions
+ * @property \Cake\Datasource\RepositoryInterface|null Authorization
  * @method \App\Model\Entity\Transaction[]|\Cake\Datasource\ResultSetInterface paginate($object = null, array $settings = [])
  */
 class TransactionsController extends AppController
@@ -18,12 +19,11 @@ class TransactionsController extends AppController
      */
     public function index()
     {
-        $this->paginate = [
-            'contain' => ['Users', 'Orders'],
-        ];
+        $this->Authorization->authorize($this->Transactions, 'index');
         $transactions = $this->paginate($this->Transactions);
 
         $this->set(compact('transactions'));
+        $this->set('_serialize', 'transactions');
     }
 
     /**
@@ -35,78 +35,21 @@ class TransactionsController extends AppController
      */
     public function view($id = null)
     {
-        $transaction = $this->Transactions->get($id, [
-            'contain' => ['Users', 'Orders', 'Comissions'],
-        ]);
+        $transaction = $this->Transactions->getById($id);
+        $this->Authorization->authorize($transaction, 'view');
 
         $this->set(compact('transaction'));
+        $this->set('_serialize', 'transaction');
     }
 
-    /**
-     * Add method
-     *
-     * @return \Cake\Http\Response|null|void Redirects on successful add, renders view otherwise.
-     */
-    public function add()
+    public function myTransactions()
     {
-        $transaction = $this->Transactions->newEmptyEntity();
-        if ($this->request->is('post')) {
-            $transaction = $this->Transactions->patchEntity($transaction, $this->request->getData());
-            if ($this->Transactions->save($transaction)) {
-                $this->Flash->success(__('The transaction has been saved.'));
+        $this->Authorization->skipAuthorization();
+        $transactions = $this->paginate($this->Transactions->getTransactionsByUserId($this->Authentication->getIdentity()->id,
+        $this->request));
 
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The transaction could not be saved. Please, try again.'));
-        }
-        $users = $this->Transactions->Users->find('list', ['limit' => 200]);
-        $orders = $this->Transactions->Orders->find('list', ['limit' => 200]);
-        $this->set(compact('transaction', 'users', 'orders'));
+        $this->set(compact('transactions'));
+        $this->set('_serialize', 'transactions');
     }
 
-    /**
-     * Edit method
-     *
-     * @param string|null $id Transaction id.
-     * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
-     */
-    public function edit($id = null)
-    {
-        $transaction = $this->Transactions->get($id, [
-            'contain' => [],
-        ]);
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $transaction = $this->Transactions->patchEntity($transaction, $this->request->getData());
-            if ($this->Transactions->save($transaction)) {
-                $this->Flash->success(__('The transaction has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The transaction could not be saved. Please, try again.'));
-        }
-        $users = $this->Transactions->Users->find('list', ['limit' => 200]);
-        $orders = $this->Transactions->Orders->find('list', ['limit' => 200]);
-        $this->set(compact('transaction', 'users', 'orders'));
-    }
-
-    /**
-     * Delete method
-     *
-     * @param string|null $id Transaction id.
-     * @return \Cake\Http\Response|null|void Redirects to index.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
-     */
-    public function delete($id = null)
-    {
-        $this->request->allowMethod(['post', 'delete']);
-        $transaction = $this->Transactions->get($id);
-        if ($this->Transactions->delete($transaction)) {
-            $this->Flash->success(__('The transaction has been deleted.'));
-        } else {
-            $this->Flash->error(__('The transaction could not be deleted. Please, try again.'));
-        }
-
-        return $this->redirect(['action' => 'index']);
-    }
 }

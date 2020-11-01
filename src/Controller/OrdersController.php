@@ -3,110 +3,51 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use Cake\Datasource\Exception\RecordNotFoundException;
+
 /**
  * Orders Controller
  *
  * @property \App\Model\Table\OrdersTable $Orders
+ * @property \Cake\Datasource\RepositoryInterface|null Authorization
  * @method \App\Model\Entity\Order[]|\Cake\Datasource\ResultSetInterface paginate($object = null, array $settings = [])
  */
 class OrdersController extends AppController
 {
     /**
      * Index method
-     *
-     * @return \Cake\Http\Response|null|void Renders view
      */
     public function index()
     {
-        $this->paginate = [
-            'contain' => ['Listings', 'Users'],
-        ];
+        $this->Authorization->authorize($this->Orders, 'index');
         $orders = $this->paginate($this->Orders);
 
         $this->set(compact('orders'));
+        $this->set('_serialize', 'orders');
+
+    }
+
+    public function myOrders(){
+        $this->Authorization->skipAuthorization();
+        $orders = $this->paginate($this->Orders->getUserOrders($this->Authentication->getIdentity()));
+
+        $this->set(compact('orders'));
+        $this->set('_serialize', 'orders');
     }
 
     /**
      * View method
      *
      * @param string|null $id Order id.
-     * @return \Cake\Http\Response|null|void Renders view
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * @throws RecordNotFoundException When record not found.
      */
     public function view($id = null)
     {
-        $order = $this->Orders->get($id, [
-            'contain' => ['Listings', 'Users', 'Transactions'],
-        ]);
+        $order = $this->Orders->getById($id);
+        $this->Authorization->authorize($order, 'view');
 
         $this->set(compact('order'));
+        $this->set('_serialize', 'order');
     }
 
-    /**
-     * Add method
-     *
-     * @return \Cake\Http\Response|null|void Redirects on successful add, renders view otherwise.
-     */
-    public function add()
-    {
-        $order = $this->Orders->newEmptyEntity();
-        if ($this->request->is('post')) {
-            $order = $this->Orders->patchEntity($order, $this->request->getData());
-            if ($this->Orders->save($order)) {
-                $this->Flash->success(__('The order has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The order could not be saved. Please, try again.'));
-        }
-        $listings = $this->Orders->Listings->find('list', ['limit' => 200]);
-        $users = $this->Orders->Users->find('list', ['limit' => 200]);
-        $this->set(compact('order', 'listings', 'users'));
-    }
-
-    /**
-     * Edit method
-     *
-     * @param string|null $id Order id.
-     * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
-     */
-    public function edit($id = null)
-    {
-        $order = $this->Orders->get($id, [
-            'contain' => [],
-        ]);
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $order = $this->Orders->patchEntity($order, $this->request->getData());
-            if ($this->Orders->save($order)) {
-                $this->Flash->success(__('The order has been saved.'));
-
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The order could not be saved. Please, try again.'));
-        }
-        $listings = $this->Orders->Listings->find('list', ['limit' => 200]);
-        $users = $this->Orders->Users->find('list', ['limit' => 200]);
-        $this->set(compact('order', 'listings', 'users'));
-    }
-
-    /**
-     * Delete method
-     *
-     * @param string|null $id Order id.
-     * @return \Cake\Http\Response|null|void Redirects to index.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
-     */
-    public function delete($id = null)
-    {
-        $this->request->allowMethod(['post', 'delete']);
-        $order = $this->Orders->get($id);
-        if ($this->Orders->delete($order)) {
-            $this->Flash->success(__('The order has been deleted.'));
-        } else {
-            $this->Flash->error(__('The order could not be deleted. Please, try again.'));
-        }
-
-        return $this->redirect(['action' => 'index']);
-    }
 }

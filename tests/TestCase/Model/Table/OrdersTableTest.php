@@ -73,4 +73,14 @@ class OrdersTableTest extends TestCase
     {
         $this->markTestIncomplete('Not implemented yet.');
     }
+
+    /**
+     * Test createOrder method
+     *
+     * @return void
+     */
+    public function testCreateOrder(): void
+    {
+        $this->markTestIncomplete('Not implemented yet.');
+    }
 }

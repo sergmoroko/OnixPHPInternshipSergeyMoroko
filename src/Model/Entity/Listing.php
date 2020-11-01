@@ -12,7 +12,7 @@ use Cake\ORM\Entity;
  * @property string $name
  * @property int $category_id
  * @property string|null $description
- * @property string $price
+ * @property float $price
  * @property int $seller_id
  * @property int|null $buyer_id
  * @property string|null $images
@@ -27,6 +27,9 @@ use Cake\ORM\Entity;
  */
 class Listing extends Entity
 {
+
+    const STATUS_LIST = ['active', 'sold', 'deleted'];
+
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().
      *
@@ -46,10 +49,13 @@ class Listing extends Entity
         'images' => true,
         'status' => true,
         'sold_date' => true,
-//        'created' => true,
-//        'modified' => true,
         'category' => true,
-//        'user' => true,
         'orders' => true,
+    ];
+
+    protected $_hidden = [
+        'created' => true,
+        'modified' => true,
+        'user'
     ];
 }

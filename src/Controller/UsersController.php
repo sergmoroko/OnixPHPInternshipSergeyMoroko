@@ -6,7 +6,6 @@ namespace App\Controller;
 use App\Http\Exception\BadRequestException;
 use Cake\Http\Exception\ForbiddenException;
 use Cake\Http\Exception\UnauthorizedException;
-use Cake\I18n\FrozenTime;
 use Firebase\JWT\JWT;
 
 /**
@@ -24,7 +23,6 @@ class UsersController extends AppController
      * @var \Cake\Datasource\RepositoryInterface|null
      */
 
-
     public function initialize(): void
     {
         parent::initialize();
@@ -34,7 +32,6 @@ class UsersController extends AppController
 
     }
 
-
     /**
      * Index method
      *
@@ -42,14 +39,9 @@ class UsersController extends AppController
      */
     public function index()
     {
+        $this->Authorization->authorize($this->Users, 'index');
 
-        $user = $this->request->getAttribute('identity');
-
-        $query = $user->applyScope('index', $this->Users->find());
-        if ($query == null) {
-            throw new ForbiddenException('You don\'t have permission to view user\'s list.');
-        }
-
+        $transactions = $this->paginate($this->Users);
         $this->set(compact('query'));
         $this->set('_serialize', 'query');
     }
@@ -72,30 +64,6 @@ class UsersController extends AppController
             throw new ForbiddenException('You don\'t have permission to view this profile.');
         }
     }
-
-
-    public function getTransactionHistory($id)
-    {
-
-        $query = ['user_id' => $id];
-        if (isset($this->request->getQueryParams()['startDate'])) {
-            $startDate = $this->request->getQueryParams()['startDate'];
-            $query[] = ['created >=' => FrozenTime::createFromFormat('d-m-Y', $startDate)];
-        }
-        if (isset($this->request->getQueryParams()['endDate'])) {
-            $endDate = $this->request->getQueryParams()['endDate'];
-            $query[] = ['created <=' => FrozenTime::createFromFormat('d-m-Y', $endDate)];
-        }
-
-        $this->loadModel('Transactions');
-        $transactions = $this->Transactions->find('all')
-            ->where($query);
-
-        $this->set(compact('transactions'));
-        $this->set('_serialize', 'transactions');
-
-    }
-
 
     /**
      * Add method
@@ -208,7 +176,6 @@ class UsersController extends AppController
 
     }
 
-
     public function myAccount()
     {
         $id = $this->Authentication->getIdentity()->id;
@@ -237,10 +204,10 @@ class UsersController extends AppController
 
     public function setRole($id = null)
     {
-        //todo: move logic to model, add checks
         $user = $this->Users->get($id, ['contain' => ['Roles']]);
 
         if ($this->Authorization->can($user, 'setRole')) {
+
             $rolesModel = $this->loadModel('Roles');
             $role = $this->request->getData('role');
 

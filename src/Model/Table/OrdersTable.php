@@ -3,7 +3,8 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
-use Cake\ORM\Query;
+use App\Model\Entity\Listing;
+use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
 use Cake\Validation\Validator;
@@ -13,9 +14,6 @@ use Cake\Validation\Validator;
  *
  * @property \App\Model\Table\ListingsTable&\Cake\ORM\Association\BelongsTo $Listings
  * @property \App\Model\Table\UsersTable&\Cake\ORM\Association\BelongsTo $Users
-// * @property \App\Model\Table\UsersTable&\Cake\ORM\Association\BelongsTo $Users
-// * @property \App\Model\Table\TransactionsTable&\Cake\ORM\Association\BelongsTo $Transactions
-// * @property \App\Model\Table\TransactionsTable&\Cake\ORM\Association\BelongsTo $Transactions
  * @property \App\Model\Table\TransactionsTable&\Cake\ORM\Association\HasMany $Transactions
  *
  * @method \App\Model\Entity\Order newEmptyEntity()
@@ -31,6 +29,7 @@ use Cake\Validation\Validator;
  * @method \App\Model\Entity\Order[]|\Cake\Datasource\ResultSetInterface saveManyOrFail(iterable $entities, $options = [])
  * @method \App\Model\Entity\Order[]|\Cake\Datasource\ResultSetInterface|false deleteMany(iterable $entities, $options = [])
  * @method \App\Model\Entity\Order[]|\Cake\Datasource\ResultSetInterface deleteManyOrFail(iterable $entities, $options = [])
+ * @method searchManager()
  *
  * @mixin \Cake\ORM\Behavior\TimestampBehavior
  */
@@ -61,17 +60,20 @@ class OrdersTable extends Table
         $this->belongsTo('Users', [
             'foreignKey' => 'seller_id',
         ]);
-        $this->belongsTo('Transactions', [
-            'foreignKey' => 'seller_transaction_id',
-            'joinType' => 'INNER',
-        ]);
-        $this->belongsTo('Transactions', [
-            'foreignKey' => 'buyer_transaction_id',
-            'joinType' => 'INNER',
-        ]);
         $this->hasMany('Transactions', [
             'foreignKey' => 'order_id',
         ]);
+
+        // Search config
+        $this->addBehavior('Search.Search');
+
+        // Setup search filter using search manager
+        $this->searchManager()
+            ->add('foo', 'Search.Callback', [
+                'callback' => function (\Cake\ORM\Query $query, array $args, \Search\Model\Filter\Base $filter) {
+                }
+            ]
+    );
     }
 
     /**
@@ -93,7 +95,7 @@ class OrdersTable extends Table
             ->notEmptyString('product_name');
 
         $validator
-            ->scalar('price')
+            ->decimal('price')
             ->requirePresence('price', 'create')
             ->notEmptyString('price');
 
@@ -112,9 +114,31 @@ class OrdersTable extends Table
         $rules->add($rules->existsIn(['listing_id'], 'Listings'), ['errorField' => 'listing_id']);
         $rules->add($rules->existsIn(['buyer_id'], 'Users'), ['errorField' => 'buyer_id']);
         $rules->add($rules->existsIn(['seller_id'], 'Users'), ['errorField' => 'seller_id']);
-        $rules->add($rules->existsIn(['seller_transaction_id'], 'Transactions'), ['errorField' => 'seller_transaction_id']);
-        $rules->add($rules->existsIn(['buyer_transaction_id'], 'Transactions'), ['errorField' => 'buyer_transaction_id']);
 
         return $rules;
+    }
+
+    public function createOrder(Listing $listing, $buyer_id, $seller_id){
+        $order = $this->newEmptyEntity();
+        $order->price = $listing->price;
+        $order->product_name = $listing->name;
+        $order->buyer_id = $buyer_id;
+        $order->seller_id = $seller_id;
+        $order->listing_id = $listing->id;
+
+        $this->save($order);
+
+        return $order;
+    }
+
+    public function getById($id){
+        if (!$this->exists(['id' => $id])){
+            throw new RecordNotFoundException('There is no order with such id: '. $id);
+        }
+        return $this->get($id);
+    }
+
+    public function getUserOrders($user){
+        $this->find('all')->where(['seller_id' => $user->id, 'buyer_id' => $user->id]);
     }
 }

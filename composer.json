@@ -12,6 +12,7 @@
         "cakephp/migrations": "^3.0",
         "cakephp/plugin-installer": "^1.2",
         "firebase/php-jwt": "^5.2",
+        "friendsofcake/search": "^6.0",
         "mobiledetect/mobiledetectlib": "^2.8"
     },
     "require-dev": {

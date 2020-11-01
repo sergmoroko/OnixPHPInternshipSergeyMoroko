@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Model\Table;
 
 use App\Http\Exception\BadRequestException;
+use App\Model\Entity\User;
 use Cake\Datasource\EntityInterface;
 use Cake\Datasource\Exception\RecordNotFoundException;
 use Cake\ORM\Query;
@@ -104,8 +105,7 @@ class UsersTable extends Table
 
         $validator
             ->decimal('balance')
-            ->notEmptyString('balance')
-        ;
+            ->notEmptyString('balance');
 
         $validator
             ->boolean('deleted')
@@ -134,35 +134,33 @@ class UsersTable extends Table
         return $query->contain('Roles');
     }
 
-    public function getUserById($id):EntityInterface
+    public function getUserById($id): EntityInterface
     {
         try {
             return $this->get($id, ['contain' => ['Roles']]);
-        }
-        catch (\Exception $e) {
+        } catch (\Exception $e) {
             throw new RecordNotFoundException('There is no user with such id: ' . $id);
         }
     }
 
-    public function updateBalance($id, float $amount){
+    public function updateBalance($id, float $amount)
+    {
         $user = $this->get($id);
         $user->setAccess('balance', true);
 
         $user->balance += $amount;
 
-        if (!$this->save($user)){
+        if (!$this->save($user)) {
             throw new BadRequestException($user->getErrors());
         }
         return $user;
     }
 
-//    public function deleteById($id){
-//        $roles = $this->Roles->findAll()
-//    }
 
-    public function addRole($id, $role){
+    public function addRole($id, $role)
+    {
         $user = $this->get($id, ['contain' => ['Roles']]);
-        if (!in_array($role, $user->roles)){
+        if (!in_array($role, $user->roles)) {
             $r = $this->Roles->newEmptyEntity();
             $r->user = $id;
             $r->role = $role;
@@ -170,14 +168,35 @@ class UsersTable extends Table
         }
     }
 
-    public function deleteRole($id, $role){
+    public function deleteRole($id, $role)
+    {
         $user = $this->get($id, ['contain' => ['Roles']]);
-        if (!in_array($role, $user->roles)){
+        if (!in_array($role, $user->roles)) {
             $r = $this->Roles->newEmptyEntity();
             $r->user = $id;
             $r->role = $role;
             $this->Roles->save($r);
         }
+    }
+
+    public function getOwner(): User
+    {
+        return $this->get($this->Roles->find()->where(['role =' => 'owner'])->first()->user_id);
+    }
+
+    public function deleteById($id){
+    $user = $this->getById($id);
+    $user->deleted = true;
+    $this->save($user);
+    }
+
+
+    public function getById($id)
+    {
+        if (!$this->exists(['id' => $id])) {
+            throw new RecordNotFoundException('There is no user with such id: ' . $id);
+        }
+        return $this->get($id);
     }
 
 

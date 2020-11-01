@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace App\Model\Table;
 
+use App\Model\Entity\Role;
 use Cake\ORM\Query;
 use Cake\ORM\RulesChecker;
 use Cake\ORM\Table;
@@ -60,7 +61,8 @@ class RolesTable extends Table
         $validator
             ->scalar('role')
             ->requirePresence('role', 'create')
-            ->notEmptyString('role');
+            ->notEmptyString('role')
+            ->inList('role', Role::ROLES_LIST);
 
         $validator
             ->integer('id')

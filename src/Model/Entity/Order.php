@@ -11,11 +11,9 @@ use Cake\ORM\Entity;
  * @property int $id
  * @property int|null $listing_id
  * @property string $product_name
- * @property string $price
+ * @property float $price
  * @property int|null $buyer_id
  * @property int|null $seller_id
- * @property int $seller_transaction_id
- * @property int $buyer_transaction_id
  * @property \Cake\I18n\FrozenTime $created
  * @property \Cake\I18n\FrozenTime $modified
  *
@@ -40,12 +38,14 @@ class Order extends Entity
         'price' => true,
         'buyer_id' => true,
         'seller_id' => true,
-        'seller_transaction_id' => true,
-        'buyer_transaction_id' => true,
         'created' => true,
         'modified' => true,
         'listing' => true,
         'user' => true,
         'transactions' => true,
+    ];
+
+    protected $_hidden = [
+        'modified' => true
     ];
 }

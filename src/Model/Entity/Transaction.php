@@ -11,8 +11,6 @@ use Cake\ORM\Entity;
  * @property int $id
  * @property int $user_id
  * @property string|null $fee
- * @property string $balance_before
- * @property string $balance_after
  * @property \Cake\I18n\FrozenTime $created
  * @property \Cake\I18n\FrozenTime $modified
  * @property int|null $order_id
@@ -25,6 +23,8 @@ use Cake\ORM\Entity;
  */
 class Transaction extends Entity
 {
+    const TRANSACTION_TYPES = ['sale', 'purchase', 'comission', 'deposit'];
+
     /**
      * Fields that can be mass assigned using newEntity() or patchEntity().
      *
@@ -37,8 +37,6 @@ class Transaction extends Entity
     protected $_accessible = [
         'user_id' => true,
         'fee' => true,
-        'balance_before' => true,
-        'balance_after' => true,
         'created' => true,
         'modified' => true,
         'order_id' => true,

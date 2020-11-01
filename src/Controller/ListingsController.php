@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Http\Exception\BadRequestException;
+use Cake\Datasource\Exception\RecordNotFoundException;
+use Cake\Http\Exception\ForbiddenException;
+
 /**
  * Listings Controller
  *
@@ -17,7 +21,9 @@ class ListingsController extends AppController
         parent::initialize();
 
         $this->Authentication->addUnauthenticatedActions(['index', 'view']);
+
         $this->loadComponent('Authorization.Authorization');
+        $this->loadComponent('Search.Search', ['actions' => ['index']]);
     }
 
     /**
@@ -27,14 +33,19 @@ class ListingsController extends AppController
      */
     public function index()
     {
-        //todo: add sorting
-
         $this->Authorization->skipAuthorization();
 
-        $this->paginate = [
-            'contain' => ['Categories'],
-        ];
-        $listings = $this->paginate($this->Listings);
+        $queryParams = $this->request->getQueryParams();
+        $searchDeletedCondition = ['status IS NOT' => 'deleted'];
+        if (isset($queryParams['status']) && $queryParams['status'] == 'deleted') {
+            $searchDeletedCondition = ['status' => 'deleted'];
+        }
+
+        $query = $this->Listings
+            ->find('search', ['search' => $queryParams])
+            ->contain(['Categories'])
+            ->where($searchDeletedCondition);
+        $listings = $this->paginate($query);
 
         $this->set(compact('listings'));
         $this->set('_serialize', 'listings');
@@ -44,8 +55,7 @@ class ListingsController extends AppController
      * View method
      *
      * @param string|null $id Listing id.
-     * @return \Cake\Http\Response|null|void Renders view
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * @throws RecordNotFoundException When record not found.
      */
     public function view($id = null)
     {
@@ -62,68 +72,88 @@ class ListingsController extends AppController
     /**
      * Add method
      *
-     * @return \Cake\Http\Response|null|void Redirects on successful add, renders view otherwise.
+     * @throws BadRequestException When record cannot be saved.
      */
     public function add()
     {
-        $listing = $this->Listings->newEmptyEntity();
-        if ($this->request->is('post')) {
-            $listing = $this->Listings->patchEntity($listing, $this->request->getData());
-            if ($this->Listings->save($listing)) {
-                $this->Flash->success(__('The listing has been saved.'));
+        $this->Authorization->skipAuthorization();
 
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The listing could not be saved. Please, try again.'));
+        $listing = $this->Listings->newEmptyEntity();
+
+        $listing = $this->Listings->patchEntity($listing, $this->request->getData());
+        $listing->seller_id = $this->Authentication->getIdentity()->id;
+
+        if (!$this->Listings->save($listing)) {
+            throw new BadRequestException($listing->getErrors());
         }
-        $categories = $this->Listings->Categories->find('list', ['limit' => 200]);
-        $users = $this->Listings->Users->find('list', ['limit' => 200]);
-        $this->set(compact('listing', 'categories', 'users'));
+
+        $this->set(compact('listing'));
+        $this->set('_serialize', 'listing');
     }
 
     /**
      * Edit method
      *
      * @param string|null $id Listing id.
-     * @return \Cake\Http\Response|null|void Redirects on successful edit, renders view otherwise.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * @throws RecordNotFoundException When record not found.
+     * @throws BadRequestException When record cannot be saved.
      */
     public function edit($id = null)
     {
-        $listing = $this->Listings->get($id, [
-            'contain' => [],
-        ]);
-        if ($this->request->is(['patch', 'post', 'put'])) {
-            $listing = $this->Listings->patchEntity($listing, $this->request->getData());
-            if ($this->Listings->save($listing)) {
-                $this->Flash->success(__('The listing has been saved.'));
+        $listing = $this->Listings->get($id);
 
-                return $this->redirect(['action' => 'index']);
-            }
-            $this->Flash->error(__('The listing could not be saved. Please, try again.'));
+        $this->Authorization->authorize($listing, 'update');
+        $listing = $this->Listings->patchEntity($listing, $this->request->getData());
+
+        if (!$this->Listings->save($listing)) {
+            throw new BadRequestException($listing->getErrors());
         }
-        $categories = $this->Listings->Categories->find('list', ['limit' => 200]);
-        $users = $this->Listings->Users->find('list', ['limit' => 200]);
-        $this->set(compact('listing', 'categories', 'users'));
+
+        $this->set(compact('listing'));
+        $this->set('_serialize', 'listing');
     }
 
     /**
      * Delete method
      *
      * @param string|null $id Listing id.
-     * @return \Cake\Http\Response|null|void Redirects to index.
-     * @throws \Cake\Datasource\Exception\RecordNotFoundException When record not found.
+     * @throws RecordNotFoundException When record not found.
      */
     public function delete($id = null)
     {
-        $this->request->allowMethod(['post', 'delete']);
         $listing = $this->Listings->get($id);
-        if ($this->Listings->delete($listing)) {
-            $this->Flash->success(__('The listing has been deleted.'));
-        } else {
-            $this->Flash->error(__('The listing could not be deleted. Please, try again.'));
-        }
+        $this->Authorization->authorize($listing, 'delete');
 
-        return $this->redirect(['action' => 'index']);
+        $listing = $this->Listings->deleteListing($id);
+
+        $this->set(compact('listing'));
+        $this->set('_serialize', ['listing']);
     }
+
+    /**
+     * Buy method
+     *
+     * @param string|null $id Listing id.
+     * @throws RecordNotFoundException When record not found.
+     * @throws ForbiddenException When product is deleted/sold or belongs current user.
+     * @throws BadRequestException When user don't have enough money to buy this product.
+     */
+    public function buy($id = null)
+    {
+        $this->Authorization->skipAuthorization();
+        $order = $this->Listings->buy($this->Authentication->getIdentity(), $id);
+
+        $this->set(compact('order'));
+        $this->set('_serialize', 'order');
+    }
+
+    public function myListings()
+    {
+        $this->Authorization->skipAuthorization();
+        $listings = $this->Listings->getListingsByUserId($this->Authentication->getIdentity()->id);
+
+        $this->set(compact('listings'));
+        $this->set('_serialize', 'listings');
+    }
+
 }

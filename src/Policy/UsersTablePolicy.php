@@ -3,9 +3,6 @@ declare(strict_types=1);
 
 namespace App\Policy;
 
-use App\Model\Entity\User;
-use App\Model\Table\UsersTable;
-use Authorization\IdentityInterface;
 use Cake\ORM\Query;
 
 /**
@@ -13,18 +10,9 @@ use Cake\ORM\Query;
  */
 class UsersTablePolicy
 {
-    public function scopeIndex($user, Query $query)
+    public function scopeIndex($user, $resource)
     {
-        if ($user->getPermissionsLevel() >= 2) {
-            return $query;
-        }
-        return null;
+        return $user->getPermissionsLevel() >= 2;
     }
-
-    public function scopeView($user, Query $query){
-
-    }
-
-
 
 }
